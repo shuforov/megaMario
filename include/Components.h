@@ -1,17 +1,14 @@
-#pragma once
+#ifndef COMPONENTS_H
+#define COMPONENTS_H
+
+#include <utility>
 
 #include "Animation.h"
 #include "Assets.h"
-#include <array>
-
-class Component;
-class Entity;
-
-const size_t MaxComponents = 32;
 
 class Component {
 public:
-  virtual ~Component() {}
+  bool has = false;
 };
 
 class CTransform : public Component {
@@ -19,20 +16,26 @@ public:
   Vec2 pos = {0.0, 0.0};
   Vec2 prevPos = {0.0, 0.0};
   Vec2 scale = {1.0, 1.0};
-  Vec2 speed = {0.0, 0.0};
+  Vec2 velocity = {0.0, 0.0};
   float angle = 0;
 
-  CTransform(const Vec2 &p = {0, 0}) : pos(p), angle(0) {}
+  CTransform() = default;
+
+  explicit CTransform(const Vec2 &p) : pos(p) {}
+
   CTransform(const Vec2 &p, const Vec2 &sp, const Vec2 &sc, float a)
-      : pos(p), prevPos(p), speed(sp), scale(sc), angle(a) {}
+      : pos(p), prevPos(p), velocity(sp), scale(sc), angle(a) {}
 };
 
-class CLifeSpan : public Component {
+class CLifespan : public Component {
 public:
-  sf::Clock clock;
   int lifespan = 0;
+  int frameCreated = 0;
 
-  CLifeSpan(int l) : lifespan(l) {}
+  CLifespan() = default;
+
+  explicit CLifespan(int duration, int frame)
+      : lifespan(duration), frameCreated(frame) {}
 };
 
 class CInput : public Component {
@@ -43,48 +46,48 @@ public:
   bool right = false;
   bool shoot = false;
   bool canShoot = true;
+  bool canJump = true;
 
-  CInput() {}
+  CInput() = default;
 };
 
 class CBoundingBox : public Component {
 public:
   Vec2 size;
   Vec2 halfSize;
-  CBoundingBox(const Vec2 &s) : size(s), halfSize(s.x / 2, s.y / 2) {}
+
+  CBoundingBox() = default;
+
+  explicit CBoundingBox(const Vec2 &s)
+      : size(s), halfSize(s.x / 2.0f, s.y / 2.0f) {}
 };
 
 class CAnimation : public Component {
 public:
   Animation animation;
-  bool repeat;
+  bool repeat = false;
 
-  CAnimation(const Animation &animation, bool r)
-      : animation(animation), repeat(r) {}
+  CAnimation() = default;
+
+  CAnimation(Animation a, bool r) : animation(std::move(a)), repeat(r) {}
 };
 
 class CGravity : public Component {
 public:
-  float gravity;
-  CGravity(float g) : gravity(g) {}
+  float gravity = 0;
+
+  CGravity() = default;
+
+  explicit CGravity(float g) : gravity(g) {}
 };
 
 class CState : public Component {
 public:
   std::string state = "jumping";
-  CState(const std::string &s) : state(s) {}
+
+  CState() = default;
+
+  explicit CState(std::string s) : state(std::move(s)) {}
 };
 
-class CShape : public Component {
-public:
-  sf::CircleShape circle;
-
-  CShape(float radius, int points, const sf::Color &fill,
-         const sf::Color &outline, float thickness)
-      : circle(radius, points) {
-    circle.setFillColor(fill);
-    circle.setOutlineColor(outline);
-    circle.setOutlineThickness(thickness);
-    circle.setOrigin(radius, radius);
-  }
-};
+#endif // COMPONENTS_H

@@ -1,35 +1,47 @@
-#pragma once
+#ifndef GAME_ENGINE_H
+#define GAME_ENGINE_H
 
-#include "Assets.h"
-#include "Common.h"
-#include "GameState.h"
-
+#include <map>
 #include <memory>
 
-class GameEngine {
+#include "Assets.h"
+#include "SFML/Graphics/RenderWindow.hpp"
+#include "Scene.h"
 
+typedef std::map<std::string, std::shared_ptr<Scene>> SceneMap;
+
+class GameEngine {
 protected:
-  std::vector<std::shared_ptr<GameState>> m_states;
-  std::vector<std::shared_ptr<GameState>> m_statesToPush;
   sf::RenderWindow m_window;
   Assets m_assets;
-  size_t m_popStates = 0;
+  std::string m_currentScene;
+  SceneMap m_sceneMap;
+  size_t m_simulationSpeed = 1;
   bool m_running = true;
 
   void init(const std::string &path);
+
   void update();
+
+  void sUserInput();
+
+  std::shared_ptr<Scene> currentScene();
 
 public:
   GameEngine(const std::string &path);
 
-  void pushState(std::shared_ptr<GameState> state);
-  void popState();
+  void changeScene(const std::string &sceneName, std::shared_ptr<Scene> scene,
+                   bool endCurrentScene = false);
 
   void quit();
+
   void run();
 
   sf::RenderWindow &window();
-  bool isRunning();
 
-  const Assets &getAssets() const;
+  const Assets &assets() const;
+
+  bool isRunning();
 };
+
+#endif // GAME_ENGINE_H

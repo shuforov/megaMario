@@ -1,12 +1,20 @@
-All commands run from root path of project
-To build project
-#
-cmake -S . -B build && cmake --build build
-#
-To run project
-#
-./build/megaMario
-#
+## Build & Run
+
+All commands are run from the **root path** of the project.
+
+### To build the project:
+```bash
+cd build
+cmake ..
+make
+```
+
+### To run the game:
+```bash
+make run
+```
+
+Alternatively, you can run the compiled binary directly from the `bin/` folder if available.
 
 ----
 COMP 4300 - Assignmnet 3
