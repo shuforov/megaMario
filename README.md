@@ -17,6 +17,8 @@ make run
 Alternatively, you can run the compiled binary directly from the `bin/` folder if available.
 
 ----
+The init commit for start doing assignmnet 3 is -> 1552cdddaefb
+----
 COMP 4300 - Assignmnet 3
 ----
 Program Specification
