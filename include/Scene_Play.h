@@ -57,6 +57,7 @@ public:
   Scene_Play(GameEngine *gameEngine, const std::string &levelPath);
 
   void update() override;
+  void sPlayerInputStateProcess();
 };
 
 #endif // SCENE_PLAY_H

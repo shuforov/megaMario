@@ -1,9 +1,10 @@
+#include <SFML/Window/Keyboard.hpp>
 #include <iostream>
 
-#include "SFML//Window/Event.hpp"
-// #include "Scene_Menu.h"
 #include "../include/Assets.h"
+#include "../include/Scene_Menu.h"
 #include "../include/Scene_Play.h"
+#include "SFML//Window/Event.hpp"
 // #include "Physics.h"
 #include "../include/Action.h"
 #include "../include/Components.h"
@@ -23,6 +24,9 @@ void Scene_Play::init(const std::string &levelPath) {
   registerAction(sf::Keyboard::C,
                  "TOGGLE_COLLISION"); // Toggle drawing (C)ollision Boxes
   registerAction(sf::Keyboard::G, "TOGGLE_GRID"); // Toggle drawing (G)rid
+  registerAction(sf::Keyboard::W, "JUMP");
+  registerAction(sf::Keyboard::A, "LEFT");
+  registerAction(sf::Keyboard::D, "RIGHT");
 
   // TODO: Register all other gameplay Actions
   // registerAction(sf::Keyboard::W, "JUMP");
@@ -139,6 +143,30 @@ void Scene_Play::sMovement() {
   // TODO: Implement the maximum player speed in both X and Y directions
   // NOTE: Setting an entity's scale.x to -1/1 will make it face to the
   // left/right
+
+  sPlayerInputStateProcess();
+}
+
+void Scene_Play::sPlayerInputStateProcess() {
+  auto &playerInput = m_player->getComponent<CInput>();
+  if (playerInput.up) {
+    // Player jump logic
+    // auto &velocity = m_player->getComponent<CTransform>().velocity;
+    // std::cout << velocity.x << ", " << velocity.y << std::endl;
+    // velocity = Vec2(0, -1);
+    // std::cout << velocity.x << ", " << velocity.y << std::endl;
+    // auto &position = m_player->getComponent<CTransform>().pos;
+    // std::cout << position.x << ", " << position.y << std::endl;
+    // auto &playerPosition = m_player->getComponent<CTransform>().pos;
+    // auto &playerVelosity = m_player->getComponent<CTransform>().velocity;
+    // std::cout << playerVelosity.x << ", " << playerVelosity.y << std::endl;
+    // playerPosition.x += playerVelosity.x * m_playerConfig.SPEED;
+    // playerPosition.y += playerVelosity.y * m_playerConfig.SPEED;
+  } else if (playerInput.left) {
+    // Player movement left logic
+  } else if (playerInput.right) {
+    // Player movement right logic
+  }
 }
 
 void Scene_Play::sLifespan() {
@@ -179,9 +207,20 @@ void Scene_Play::sDoAction(const Action &action) {
     } else if (action.name() == "QUIT") {
       onEnd();
     } else if (action.name() == "JUMP") {
-      // m_player jump
+      m_player->getComponent<CInput>().up = true;
+    } else if (action.name() == "LEFT") {
+      m_player->getComponent<CInput>().left = true;
+    } else if (action.name() == "RIGHT") {
+      m_player->getComponent<CInput>().right = true;
     }
   } else if (action.type() == "END") {
+    if (action.name() == "JUMP") {
+      m_player->getComponent<CInput>().up = false;
+    } else if (action.name() == "LEFT") {
+      m_player->getComponent<CInput>().left = false;
+    } else if (action.name() == "RIGHT") {
+      m_player->getComponent<CInput>().right = false;
+    }
   }
 }
 
@@ -190,9 +229,8 @@ void Scene_Play::sAnimation() {
 }
 
 void Scene_Play::onEnd() {
-  // TODO: when the scene ends, change back to the MENU scene
-  // use m_game->changeScene(correct params);
-  // m_game->changeScene( "MENU", std::make_shared<Scene_Menu>(m_game));
+  // When the scene ends, change back to the MENU scene
+  m_game->changeScene("MENU", std::make_shared<Scene_Menu>(m_game));
 }
 
 void Scene_Play::sRender() {
