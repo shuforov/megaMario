@@ -115,7 +115,7 @@ void Scene_Play::spawnPlayer() {
                                      true);
   m_player->addComponent<CTransform>(Vec2(224, 352));
   m_player->addComponent<CBoundingBox>(Vec2(48, 48));
-
+  m_player->addComponent<CGravity>(0.1);
   // TODO: be sure to add the remaining components to the player
 }
 
@@ -145,27 +145,44 @@ void Scene_Play::sMovement() {
   // left/right
 
   sPlayerInputStateProcess();
+  // process all entity gravity
+  for (auto entityNode : m_entityManager.getEntities()) {
+    if (entityNode->hasComponent<CGravity>()) {
+      entityNode->getComponent<CTransform>().velocity.y +=
+          entityNode->getComponent<CGravity>().gravity;
+    }
+    entityNode->getComponent<CTransform>().pos +=
+        entityNode->getComponent<CTransform>().velocity;
+  }
 }
 
 void Scene_Play::sPlayerInputStateProcess() {
   auto &playerInput = m_player->getComponent<CInput>();
-  if (playerInput.up) {
-    // Player jump logic
-    // auto &velocity = m_player->getComponent<CTransform>().velocity;
-    // std::cout << velocity.x << ", " << velocity.y << std::endl;
-    // velocity = Vec2(0, -1);
-    // std::cout << velocity.x << ", " << velocity.y << std::endl;
-    // auto &position = m_player->getComponent<CTransform>().pos;
-    // std::cout << position.x << ", " << position.y << std::endl;
-    // auto &playerPosition = m_player->getComponent<CTransform>().pos;
-    // auto &playerVelosity = m_player->getComponent<CTransform>().velocity;
-    // std::cout << playerVelosity.x << ", " << playerVelosity.y << std::endl;
-    // playerPosition.x += playerVelosity.x * m_playerConfig.SPEED;
-    // playerPosition.y += playerVelosity.y * m_playerConfig.SPEED;
-  } else if (playerInput.left) {
-    // Player movement left logic
-  } else if (playerInput.right) {
-    // Player movement right logic
+  if (playerInput.up || playerInput.left || playerInput.right) {
+    auto &playerPosition = m_player->getComponent<CTransform>().pos;
+    auto &velocity = m_player->getComponent<CTransform>().velocity;
+    Vec2 newVelocity = Vec2(0, 0);
+    if (playerInput.up) {
+      // Player jump logic
+      newVelocity.y = -1;
+      if (playerInput.left) {
+        newVelocity.x = -1;
+      } else if (playerInput.right) {
+        newVelocity.x = 1;
+      }
+    } else if (playerInput.left) {
+      // Player movement left logic
+      newVelocity = Vec2(-1, 0);
+    } else if (playerInput.right) {
+      // Player movement right logic
+      newVelocity = Vec2(1, 0);
+    }
+    playerPosition.x +=
+        newVelocity.x * 1; // speed should be taken from m_playerConfig.SPEED
+                           // -> pos.x += velocity.x * speed
+    playerPosition.y +=
+        newVelocity.y * 1; // speed should be taken from m_playerConfig.SPEED
+                           // -> pos.x += velocity.x * speed
   }
 }
 
