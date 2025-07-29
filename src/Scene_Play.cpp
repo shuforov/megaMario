@@ -4,6 +4,7 @@
 #include "../include/Assets.h"
 #include "../include/Scene_Menu.h"
 #include "../include/Scene_Play.h"
+#include "Physics.h"
 #include "SFML//Window/Event.hpp"
 // #include "Physics.h"
 #include "../include/Action.h"
@@ -27,9 +28,6 @@ void Scene_Play::init(const std::string &levelPath) {
   registerAction(sf::Keyboard::W, "JUMP");
   registerAction(sf::Keyboard::A, "LEFT");
   registerAction(sf::Keyboard::D, "RIGHT");
-
-  // TODO: Register all other gameplay Actions
-  // registerAction(sf::Keyboard::W, "JUMP");
 
   m_gridText.setCharacterSize(12);
   m_gridText.setFont(m_game->assets().getFont("Arial"));
@@ -151,6 +149,8 @@ void Scene_Play::sMovement() {
       entityNode->getComponent<CTransform>().velocity.y +=
           entityNode->getComponent<CGravity>().gravity;
     }
+    entityNode->getComponent<CTransform>().prevPos =
+        entityNode->getComponent<CTransform>().pos;
     entityNode->getComponent<CTransform>().pos +=
         entityNode->getComponent<CTransform>().velocity;
   }
@@ -178,11 +178,11 @@ void Scene_Play::sPlayerInputStateProcess() {
       newVelocity = Vec2(1, 0);
     }
     playerPosition.x +=
-        newVelocity.x * 1; // speed should be taken from m_playerConfig.SPEED
-                           // -> pos.x += velocity.x * speed
+        newVelocity.x * 10; // speed should be taken from m_playerConfig.SPEED
+                            // -> pos.x += velocity.x * speed
     playerPosition.y +=
-        newVelocity.y * 1; // speed should be taken from m_playerConfig.SPEED
-                           // -> pos.x += velocity.x * speed
+        newVelocity.y * 10; // speed should be taken from m_playerConfig.SPEED
+                            // -> pos.x += velocity.x * speed
   }
 }
 
@@ -200,6 +200,33 @@ void Scene_Play::sCollision() {
   //           LESS than it
 
   // TODO: Implement Physics::GetOverlap() function, use it inside this function
+
+  for (auto entityNode : m_entityManager.getEntities("tile")) {
+    Vec2 overlapResult = m_worldPhysics.GetOverlap(m_player, entityNode);
+
+    Vec2 previousOverlapResult =
+        m_worldPhysics.GetPreviousOverlap(m_player, entityNode);
+    if (overlapResult.x > 0 && overlapResult.y > 0) {
+      if (overlapResult.y > previousOverlapResult.y) {
+        // Player moving down so it should push up from tile
+        m_player->getComponent<CTransform>().pos.y =
+            m_player->getComponent<CTransform>().prevPos.y;
+        m_player->getComponent<CTransform>().velocity.y = 0.0;
+      } else if (overlapResult.y < previousOverlapResult.y) {
+        // Player moving up so it should push down from tile
+        m_player->getComponent<CTransform>().pos.y =
+            m_player->getComponent<CTransform>().prevPos.y;
+      } else if (overlapResult.x > previousOverlapResult.x) {
+        // Player moving right so it should push left from tile
+        m_player->getComponent<CTransform>().pos.x =
+            m_player->getComponent<CTransform>().prevPos.x;
+      } else if (overlapResult.x < previousOverlapResult.x) {
+        // Player moving left so it should push right from tile
+        m_player->getComponent<CTransform>().pos.x =
+            m_player->getComponent<CTransform>().prevPos.x;
+      }
+    }
+  }
 
   // TODO: Implement bullet/tile collisions
   //       Destroy the tile if it has a Brick animation

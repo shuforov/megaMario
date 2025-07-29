@@ -5,9 +5,9 @@
 #include <memory>
 
 #include "EntityManager.h"
+#include "Physics.h"
 #include "SFML/Graphics/Text.hpp"
 #include "Scene.h"
-
 class Scene_Play : public Scene {
   struct PlayerConfig {
     float X, Y, CX, CY, SPEED, MAX_SPEED, JUMP, GRAVITY;
@@ -23,7 +23,7 @@ protected:
   bool m_drawGrid = false;
   const Vec2 m_gridSize = {64, 64};
   sf::Text m_gridText;
-  // Physics m_worldPhysics;
+  Physics m_worldPhysics;
 
   void init(const std::string &levelPath);
 
