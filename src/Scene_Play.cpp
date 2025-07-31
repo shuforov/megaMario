@@ -1,3 +1,4 @@
+#include <SFML/System/Vector2.hpp>
 #include <SFML/Window/Keyboard.hpp>
 #include <iostream>
 
@@ -38,14 +39,20 @@ void Scene_Play::init(const std::string &levelPath) {
 
 Vec2 Scene_Play::gridToMidPixel(float gridX, float gridY,
                                 std::shared_ptr<Entity> entity) {
-  // TODO: This function takes in a grid (x,y) position and an Entity
+  // This function takes in a grid (x,y) position and an Entity
   //       Return a Vec2 indicating where the CENTER position of the Entity
   //       should be You must use the Entity's Animation size to position it
   //       correctly The size of the grid width and height is stored in
   //       m_gridSize.x and m_gridSize.y The bottom-left corner of the Animation
   //       should aligh with the bottom left of the grid cell
-
-  return Vec2(0, 0);
+  sf::Vector2 windowSize = m_game->window().getSize();
+  float positionByGridX =
+      windowSize.x - (windowSize.x - (m_gridSize.x * gridX));
+  float positionByGridY = windowSize.y - (m_gridSize.y * gridY);
+  Vec2 spriteSize = entity->getComponent<CAnimation>().animation.getSize();
+  Vec2 result = Vec2((positionByGridX + spriteSize.x / 2),
+                     (positionByGridY - spriteSize.y / 2));
+  return result;
 }
 
 void Scene_Play::loadLevel(const std::string &fileName) {
@@ -66,7 +73,8 @@ void Scene_Play::loadLevel(const std::string &fileName) {
   // IMPORTANT: always add the CAnimation component first so that gridToMidPixel
   // can compute correctly
   brick->addComponent<CAnimation>(m_game->assets().getAnimation("Brick"), true);
-  brick->addComponent<CTransform>(Vec2(96, 480));
+  brick->addComponent<CTransform>(gridToMidPixel(1, 4, brick));
+
   // NOTE: Your final code should position the entity with the grid x,y position
   // read from the file: brick->addComponent<CTransform>(gridToMidPixel(gridX,
   // gridY, brick));
@@ -80,16 +88,16 @@ void Scene_Play::loadLevel(const std::string &fileName) {
   // block->addComponent<CAnimation>(m_game->assets().getAnimation("Block"),
   // true);
   block->addComponent<CAnimation>(m_game->assets().getAnimation("Block"), true);
-  block->addComponent<CTransform>(Vec2(224, 480));
+  block->addComponent<CTransform>(gridToMidPixel(3, 4, block));
   // add a bounding box, this will now show up if we press the 'C' key
-  // block->addComponent<CBoundingBox>(m_game->assets().getAnimation("Block").getSize());
   block->addComponent<CBoundingBox>(
-      m_game->assets().getAnimation("Ground").getSize());
-
+      m_game->assets().getAnimation("Block").getSize());
   auto question = m_entityManager.addEntity("tile");
   question->addComponent<CAnimation>(m_game->assets().getAnimation("Question"),
                                      true);
-  question->addComponent<CTransform>(Vec2(352, 480));
+  question->addComponent<CBoundingBox>(
+      m_game->assets().getAnimation("Question").getSize());
+  question->addComponent<CTransform>(gridToMidPixel(5, 4, question));
 
   // NOTE: THIS IS INCREDIBLY IMPORTANT PLEASE READ THIS EXAMPLE
   //       Components are now returned as references rather than pointers
@@ -111,7 +119,7 @@ void Scene_Play::spawnPlayer() {
   m_player = m_entityManager.addEntity("player");
   m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Stand"),
                                      true);
-  m_player->addComponent<CTransform>(Vec2(224, 352));
+  m_player->addComponent<CTransform>(gridToMidPixel(3, 7, m_player));
   m_player->addComponent<CBoundingBox>(Vec2(48, 48));
   m_player->addComponent<CGravity>(0.1);
   // TODO: be sure to add the remaining components to the player
