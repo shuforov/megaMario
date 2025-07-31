@@ -1,16 +1,17 @@
 #include <SFML/System/Vector2.hpp>
 #include <SFML/Window/Keyboard.hpp>
+#include <fstream>
+#include <ios>
 #include <iostream>
 
+#include "../include/Action.h"
 #include "../include/Assets.h"
+#include "../include/Components.h"
+#include "../include/GameEngine.h"
 #include "../include/Scene_Menu.h"
 #include "../include/Scene_Play.h"
 #include "Physics.h"
 #include "SFML//Window/Event.hpp"
-// #include "Physics.h"
-#include "../include/Action.h"
-#include "../include/Components.h"
-#include "../include/GameEngine.h"
 #include "SFML/Graphics/RectangleShape.hpp"
 
 Scene_Play::Scene_Play(GameEngine *gameEngine, const std::string &levelPath)
@@ -63,54 +64,57 @@ void Scene_Play::loadLevel(const std::string &fileName) {
   //       use the PlayerConfig struct m_playerConfig to store player properties
   //       this struct is defined at the top of Scene_Play.h
 
-  // NOTE: all the code below is sample code which shows you how to
-  //       set up and use entities with the new syntax, it should be removed
+  // Reading data in level file here
+  std::ifstream fileInput(fileName);
+  if (!fileInput.is_open()) {
+    std::cerr << "Could not open config file: " << fileName << std::endl;
+    exit(1);
+  }
+  std::string configName;
+  std::string entityName;
+  Vec2 gridPos;
 
-  spawnPlayer();
-
-  // some sample entities
-  auto brick = m_entityManager.addEntity("tile");
-  // IMPORTANT: always add the CAnimation component first so that gridToMidPixel
-  // can compute correctly
-  brick->addComponent<CAnimation>(m_game->assets().getAnimation("Brick"), true);
-  brick->addComponent<CTransform>(gridToMidPixel(1, 4, brick));
-
-  // NOTE: Your final code should position the entity with the grid x,y position
-  // read from the file: brick->addComponent<CTransform>(gridToMidPixel(gridX,
-  // gridY, brick));
-
-  if (brick->getComponent<CAnimation>().animation.getName() == "Brick") {
-    std::cout
-        << "This could be a good way of identifying if a tile is a brick!\n";
+  while (fileInput >> configName) {
+    if (configName == "Tile") {
+      fileInput >> entityName >> gridPos.x >> gridPos.y;
+      auto tileNode = m_entityManager.addEntity("Tile");
+      tileNode->addComponent<CAnimation>(
+          m_game->assets().getAnimation(entityName), true);
+      tileNode->addComponent<CTransform>(
+          gridToMidPixel(gridPos.x, gridPos.y, tileNode));
+      tileNode->addComponent<CBoundingBox>(
+          m_game->assets().getAnimation(entityName).getSize());
+    } else if (configName == "Dec") {
+      fileInput >> entityName >> gridPos.x >> gridPos.y;
+      auto decNode = m_entityManager.addEntity("Dec");
+      decNode->addComponent<CAnimation>(
+          m_game->assets().getAnimation(entityName), true);
+      decNode->addComponent<CTransform>(
+          gridToMidPixel(gridPos.x, gridPos.y, decNode));
+    } else if (configName == "Player") {
+      fileInput >> m_playerConfig.X >> m_playerConfig.Y >> m_playerConfig.CX >>
+          m_playerConfig.CY >> m_playerConfig.SPEED >> m_playerConfig.JUMP >>
+          m_playerConfig.MAX_SPEED >> m_playerConfig.GRAVITY >>
+          m_playerConfig.WEAPON;
+    }
   }
 
-  auto block = m_entityManager.addEntity("tile");
-  // block->addComponent<CAnimation>(m_game->assets().getAnimation("Block"),
-  // true);
-  block->addComponent<CAnimation>(m_game->assets().getAnimation("Block"), true);
-  block->addComponent<CTransform>(gridToMidPixel(3, 4, block));
-  // add a bounding box, this will now show up if we press the 'C' key
-  block->addComponent<CBoundingBox>(
-      m_game->assets().getAnimation("Block").getSize());
-  auto question = m_entityManager.addEntity("tile");
-  question->addComponent<CAnimation>(m_game->assets().getAnimation("Question"),
-                                     true);
-  question->addComponent<CBoundingBox>(
-      m_game->assets().getAnimation("Question").getSize());
-  question->addComponent<CTransform>(gridToMidPixel(5, 4, question));
+  spawnPlayer();
 
   // NOTE: THIS IS INCREDIBLY IMPORTANT PLEASE READ THIS EXAMPLE
   //       Components are now returned as references rather than pointers
   //       If you do not specify a reference variable type, it will COPY the
   //       component Here is an example:
   //
-  //       This will COPY the transform into the variable 'transform1' - it is
-  //       INCORRECT Any changes you make to transform1 will not be changed
-  //       inside the entity auto transform1 = entity->get<CTransform>()
+  //       This will COPY the transform into the variable 'transform1' - it
+  //       is INCORRECT Any changes you make to transform1 will not be
+  //       changed inside the entity auto transform1 =
+  //       entity->get<CTransform>()
   //
-  //       This will REFERENCE the transform with the variable 'transform2' - it
-  //       is CORRECT Now any changes you make to transform2 will be changed
-  //       inside the entity auto& transform2 = entity->get<CTransform>()
+  //       This will REFERENCE the transform with the variable 'transform2'
+  //       - it is CORRECT Now any changes you make to transform2 will be
+  //       changed inside the entity auto& transform2 =
+  //       entity->get<CTransform>()
 }
 
 void Scene_Play::spawnPlayer() {
@@ -119,9 +123,11 @@ void Scene_Play::spawnPlayer() {
   m_player = m_entityManager.addEntity("player");
   m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Stand"),
                                      true);
-  m_player->addComponent<CTransform>(gridToMidPixel(3, 7, m_player));
-  m_player->addComponent<CBoundingBox>(Vec2(48, 48));
-  m_player->addComponent<CGravity>(0.1);
+  m_player->addComponent<CTransform>(
+      gridToMidPixel(m_playerConfig.X, m_playerConfig.Y, m_player));
+  m_player->addComponent<CBoundingBox>(
+      Vec2(m_playerConfig.CX, m_playerConfig.CY));
+  m_player->addComponent<CGravity>(m_playerConfig.GRAVITY);
   // TODO: be sure to add the remaining components to the player
 }
 
@@ -195,21 +201,22 @@ void Scene_Play::sPlayerInputStateProcess() {
 }
 
 void Scene_Play::sLifespan() {
-  // TODO: Check lifespan of entities the have them, and destroy them if the go
-  // over
+  // TODO: Check lifespan of entities the have them, and destroy them if the
+  // go over
 }
 
 void Scene_Play::sCollision() {
   // REMEMBER: SFML's (0,0) position is in the TOP-LEFT corner
   //           This means jumping will have a negative y-component
   //           and gravity will have a positive y-component
-  //           Also, something BELOW something else will hava a y value GREATER
-  //           than it Also, something ABOVE something else will hava a y value
-  //           LESS than it
+  //           Also, something BELOW something else will hava a y value
+  //           GREATER than it Also, something ABOVE something else will
+  //           hava a y value LESS than it
 
-  // TODO: Implement Physics::GetOverlap() function, use it inside this function
+  // TODO: Implement Physics::GetOverlap() function, use it inside this
+  // function
 
-  for (auto entityNode : m_entityManager.getEntities("tile")) {
+  for (auto entityNode : m_entityManager.getEntities("Tile")) {
     Vec2 overlapResult = m_worldPhysics.GetOverlap(m_player, entityNode);
 
     Vec2 previousOverlapResult =
