@@ -1,5 +1,7 @@
 #include <SFML/System/Vector2.hpp>
 #include <SFML/Window/Keyboard.hpp>
+#include <algorithm>
+#include <cstdlib>
 #include <fstream>
 #include <ios>
 #include <iostream>
@@ -13,6 +15,7 @@
 #include "Physics.h"
 #include "SFML//Window/Event.hpp"
 #include "SFML/Graphics/RectangleShape.hpp"
+#include "Vec2.h"
 
 Scene_Play::Scene_Play(GameEngine *gameEngine, const std::string &levelPath)
     : Scene(gameEngine), m_levelPath(levelPath) {
@@ -30,6 +33,7 @@ void Scene_Play::init(const std::string &levelPath) {
   registerAction(sf::Keyboard::W, "JUMP");
   registerAction(sf::Keyboard::A, "LEFT");
   registerAction(sf::Keyboard::D, "RIGHT");
+  registerAction(sf::Keyboard::S, "DOWN");
 
   m_gridText.setCharacterSize(12);
   m_gridText.setFont(m_game->assets().getFont("Arial"));
@@ -82,6 +86,8 @@ void Scene_Play::loadLevel(const std::string &fileName) {
           m_game->assets().getAnimation(entityName), true);
       tileNode->addComponent<CTransform>(
           gridToMidPixel(gridPos.x, gridPos.y, tileNode));
+      tileNode->getComponent<CTransform>().prevPos =
+          tileNode->getComponent<CTransform>().pos;
       tileNode->addComponent<CBoundingBox>(
           m_game->assets().getAnimation(entityName).getSize());
     } else if (configName == "Dec") {
@@ -158,24 +164,25 @@ void Scene_Play::sMovement() {
 
   sPlayerInputStateProcess();
   // process all entity gravity
-  for (auto entityNode : m_entityManager.getEntities()) {
-    if (entityNode->hasComponent<CGravity>()) {
-      entityNode->getComponent<CTransform>().velocity.y +=
-          entityNode->getComponent<CGravity>().gravity;
-    }
-    entityNode->getComponent<CTransform>().prevPos =
-        entityNode->getComponent<CTransform>().pos;
-    entityNode->getComponent<CTransform>().pos +=
-        entityNode->getComponent<CTransform>().velocity;
-  }
+  // for (auto entityNode : m_entityManager.getEntities()) {
+  //   if (entityNode->hasComponent<CGravity>()) {
+  //     entityNode->getComponent<CTransform>().velocity.y +=
+  //         entityNode->getComponent<CGravity>().gravity;
+  //   }
+  //   entityNode->getComponent<CTransform>().prevPos =
+  //       entityNode->getComponent<CTransform>().pos;
+  //   entityNode->getComponent<CTransform>().pos +=
+  //       entityNode->getComponent<CTransform>().velocity;
+  // }
 }
 
 void Scene_Play::sPlayerInputStateProcess() {
   auto &playerInput = m_player->getComponent<CInput>();
-  if (playerInput.up || playerInput.left || playerInput.right) {
-    auto &playerPosition = m_player->getComponent<CTransform>().pos;
-    auto &velocity = m_player->getComponent<CTransform>().velocity;
-    Vec2 newVelocity = Vec2(0, 0);
+  auto &velocity = m_player->getComponent<CTransform>().velocity;
+  auto &playerPosition = m_player->getComponent<CTransform>().pos;
+  Vec2 newVelocity = Vec2(0, 0);
+  if (playerInput.up || playerInput.left || playerInput.right ||
+      playerInput.down) {
     if (playerInput.up) {
       // Player jump logic
       newVelocity.y = -1;
@@ -191,13 +198,23 @@ void Scene_Play::sPlayerInputStateProcess() {
       // Player movement right logic
       newVelocity = Vec2(1, 0);
     }
-    playerPosition.x +=
-        newVelocity.x * 10; // speed should be taken from m_playerConfig.SPEED
-                            // -> pos.x += velocity.x * speed
-    playerPosition.y +=
-        newVelocity.y * 10; // speed should be taken from m_playerConfig.SPEED
-                            // -> pos.x += velocity.x * speed
+    if (playerInput.down) {
+      // Player movement down logic
+      newVelocity.y = 1;
+      if (playerInput.left) {
+        newVelocity.x = -1;
+      } else if (playerInput.right) {
+        newVelocity.x = 1;
+      }
+    }
+    // update previousPosition of player
+    m_player->getComponent<CTransform>().prevPos = playerPosition;
   }
+  velocity = newVelocity;
+
+  // update current player position
+  playerPosition.x += velocity.x * m_playerConfig.SPEED;
+  playerPosition.y += velocity.y * m_playerConfig.SPEED;
 }
 
 void Scene_Play::sLifespan() {
@@ -215,30 +232,23 @@ void Scene_Play::sCollision() {
 
   // TODO: Implement Physics::GetOverlap() function, use it inside this
   // function
-
-  for (auto entityNode : m_entityManager.getEntities("Tile")) {
-    Vec2 overlapResult = m_worldPhysics.GetOverlap(m_player, entityNode);
-
-    Vec2 previousOverlapResult =
-        m_worldPhysics.GetPreviousOverlap(m_player, entityNode);
-    if (overlapResult.x > 0 && overlapResult.y > 0) {
-      if (overlapResult.y > previousOverlapResult.y) {
-        // Player moving down so it should push up from tile
-        m_player->getComponent<CTransform>().pos.y =
-            m_player->getComponent<CTransform>().prevPos.y;
-        m_player->getComponent<CTransform>().velocity.y = 0.0;
-      } else if (overlapResult.y < previousOverlapResult.y) {
-        // Player moving up so it should push down from tile
-        m_player->getComponent<CTransform>().pos.y =
-            m_player->getComponent<CTransform>().prevPos.y;
-      } else if (overlapResult.x > previousOverlapResult.x) {
-        // Player moving right so it should push left from tile
-        m_player->getComponent<CTransform>().pos.x =
-            m_player->getComponent<CTransform>().prevPos.x;
-      } else if (overlapResult.x < previousOverlapResult.x) {
-        // Player moving left so it should push right from tile
-        m_player->getComponent<CTransform>().pos.x =
-            m_player->getComponent<CTransform>().prevPos.x;
+  Vec2 &playerPosition = m_player->getComponent<CTransform>().pos;
+  for (auto &entityNode : m_entityManager.getEntities("Tile")) {
+    Vec2 overlap = m_worldPhysics.GetOverlap(m_player, entityNode);
+    if (overlap.x != 0 && overlap.y != 0) {
+      Vec2 previousOverlap =
+          m_worldPhysics.GetPreviousOverlap(m_player, entityNode);
+      if (std::abs(overlap.x) < std::abs(overlap.y)) {
+        // Resolve X axis
+        playerPosition.x += overlap.x;
+      } else if (overlap.x < -5 || overlap.x > 5) {
+        // Resolve Y axis
+        playerPosition.y += overlap.y;
+      } else {
+        // Stop Y velocity if hitting ground
+        if (overlap.y < 0) {
+          m_player->getComponent<CTransform>().velocity.y = 0;
+        }
       }
     }
   }
@@ -271,6 +281,8 @@ void Scene_Play::sDoAction(const Action &action) {
       m_player->getComponent<CInput>().left = true;
     } else if (action.name() == "RIGHT") {
       m_player->getComponent<CInput>().right = true;
+    } else if (action.name() == "DOWN") {
+      m_player->getComponent<CInput>().down = true;
     }
   } else if (action.type() == "END") {
     if (action.name() == "JUMP") {
@@ -279,6 +291,8 @@ void Scene_Play::sDoAction(const Action &action) {
       m_player->getComponent<CInput>().left = false;
     } else if (action.name() == "RIGHT") {
       m_player->getComponent<CInput>().right = false;
+    } else if (action.name() == "DOWN") {
+      m_player->getComponent<CInput>().down = false;
     }
   }
 }

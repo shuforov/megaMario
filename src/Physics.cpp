@@ -8,23 +8,24 @@ Vec2 Physics::GetOverlap(std::shared_ptr<Entity> a, std::shared_ptr<Entity> b) {
 
   // A entity data
   Vec2 aEntityPosition = a->getComponent<CTransform>().pos;
-  Vec2 aEntityBBSize = a->getComponent<CBoundingBox>().size;
   Vec2 aEntityBBHalfSizes = a->getComponent<CBoundingBox>().halfSize;
 
   // B entity data
   Vec2 bEntityPosition = b->getComponent<CTransform>().pos;
-  Vec2 bEntityBBSize = b->getComponent<CBoundingBox>().size;
   Vec2 bEntityBBHalfSizes = b->getComponent<CBoundingBox>().halfSize;
 
   // Calculate overlap of two objects
   // differences between center of two rectangles
-  Vec2 delta = Vec2(std::fabs(aEntityPosition.x - bEntityPosition.x),
-                    std::fabs(aEntityPosition.y - bEntityPosition.y));
-  float overlapX = aEntityBBHalfSizes.x + bEntityBBHalfSizes.x - delta.x;
-  float overlapY = aEntityBBHalfSizes.y + bEntityBBHalfSizes.y - delta.y;
-  Vec2 overlapResult = Vec2(
-      overlapX, overlapY); // if one of those value negative it's not ovelpa
-  return overlapResult;
+  Vec2 delta = bEntityPosition - aEntityPosition;
+  float overlapX =
+      (aEntityBBHalfSizes.x + bEntityBBHalfSizes.x) - std::abs(delta.x);
+  float overlapY =
+      (aEntityBBHalfSizes.y + bEntityBBHalfSizes.y) - std::abs(delta.y);
+  if (overlapX > 0 && overlapY > 0) {
+    return Vec2((delta.x > 0 ? -overlapX : overlapX),
+                (delta.y > 0 ? -overlapY : overlapY));
+  }
+  return Vec2(0, 0);
 }
 
 Vec2 Physics::GetPreviousOverlap(std::shared_ptr<Entity> a,
@@ -35,22 +36,19 @@ Vec2 Physics::GetPreviousOverlap(std::shared_ptr<Entity> a,
 
   // A entity data
   Vec2 aEntityPPosition = a->getComponent<CTransform>().prevPos;
-  Vec2 aEntityBBSize = a->getComponent<CBoundingBox>().size;
   Vec2 aEntityBBHalfSizes = a->getComponent<CBoundingBox>().halfSize;
 
   // B entity data
   Vec2 bEntityPPosition = b->getComponent<CTransform>().prevPos;
-  Vec2 bEntityBBSize = b->getComponent<CBoundingBox>().size;
   Vec2 bEntityBBHalfSizes = b->getComponent<CBoundingBox>().halfSize;
 
   // Calculate overlap of two objects
   // differences between center of two rectangles
-  Vec2 delta = Vec2(std::fabs(aEntityPPosition.x - bEntityPPosition.x),
-                    std::fabs(aEntityPPosition.y - bEntityPPosition.y));
-  float overlapX = aEntityBBHalfSizes.x + bEntityBBHalfSizes.x - delta.x;
-  float overlapY = aEntityBBHalfSizes.y + bEntityBBHalfSizes.y - delta.y;
-  Vec2 overlapResult = Vec2(
-      overlapX, overlapY); // if one of those value negative it's not ovelpa
-
-  return overlapResult;
+  Vec2 delta = bEntityPPosition - aEntityPPosition;
+  float overlapX =
+      (aEntityBBHalfSizes.x + bEntityBBHalfSizes.x) - std::abs(delta.x);
+  float overlapY =
+      (aEntityBBHalfSizes.y + bEntityBBHalfSizes.y) - std::abs(delta.y);
+  return Vec2((delta.x > 0 ? -overlapX : overlapX),
+              (delta.y > 0 ? -overlapY : overlapY));
 }
