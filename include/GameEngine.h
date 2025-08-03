@@ -28,6 +28,7 @@ protected:
   std::shared_ptr<Scene> currentScene();
 
 public:
+  float m_frameLimit = 60.0f;
   GameEngine(const std::string &path);
 
   void changeScene(const std::string &sceneName, std::shared_ptr<Scene> scene,

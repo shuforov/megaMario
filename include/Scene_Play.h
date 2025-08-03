@@ -24,6 +24,11 @@ protected:
   const Vec2 m_gridSize = {64, 64};
   sf::Text m_gridText;
   Physics m_worldPhysics;
+  bool m_playerOnGround = false;
+  bool m_jumpActive = false;
+  bool m_isJumping = false;
+  float m_jumpTime = 0.0f;
+  float m_maxJumpTime = 0.25f; // seconds of held-jump boost
 
   void init(const std::string &levelPath);
 
@@ -57,7 +62,6 @@ public:
   Scene_Play(GameEngine *gameEngine, const std::string &levelPath);
 
   void update() override;
-  void sPlayerInputStateProcess();
 };
 
 #endif // SCENE_PLAY_H

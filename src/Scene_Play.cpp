@@ -156,65 +156,70 @@ void Scene_Play::update() {
 }
 
 void Scene_Play::sMovement() {
-  // TODO: Implement player movement/jumping based on its CInput component
-  // TODO: Implement gravity's effect on the player
-  // TODO: Implement the maximum player speed in both X and Y directions
-  // NOTE: Setting an entity's scale.x to -1/1 will make it face to the
-  // left/right
+  auto &transform = m_player->getComponent<CTransform>();
+  auto &velocity = transform.velocity;
+  auto gravity = m_player->getComponent<CGravity>().gravity;
+  auto &input = m_player->getComponent<CInput>();
 
-  sPlayerInputStateProcess();
-  // process all entity gravity
-  // for (auto entityNode : m_entityManager.getEntities()) {
-  //   if (entityNode->hasComponent<CGravity>()) {
-  //     entityNode->getComponent<CTransform>().velocity.y +=
-  //         entityNode->getComponent<CGravity>().gravity;
-  //   }
-  //   entityNode->getComponent<CTransform>().prevPos =
-  //       entityNode->getComponent<CTransform>().pos;
-  //   entityNode->getComponent<CTransform>().pos +=
-  //       entityNode->getComponent<CTransform>().velocity;
-  // }
-}
+  // Track previous position before any changes
+  transform.prevPos = transform.pos;
 
-void Scene_Play::sPlayerInputStateProcess() {
-  auto &playerInput = m_player->getComponent<CInput>();
-  auto &velocity = m_player->getComponent<CTransform>().velocity;
-  auto &playerPosition = m_player->getComponent<CTransform>().pos;
-  Vec2 newVelocity = Vec2(0, 0);
-  if (playerInput.up || playerInput.left || playerInput.right ||
-      playerInput.down) {
-    if (playerInput.up) {
-      // Player jump logic
-      newVelocity.y = -1;
-      if (playerInput.left) {
-        newVelocity.x = -1;
-      } else if (playerInput.right) {
-        newVelocity.x = 1;
-      }
-    } else if (playerInput.left) {
-      // Player movement left logic
-      newVelocity = Vec2(-1, 0);
-    } else if (playerInput.right) {
-      // Player movement right logic
-      newVelocity = Vec2(1, 0);
-    }
-    if (playerInput.down) {
-      // Player movement down logic
-      newVelocity.y = 1;
-      if (playerInput.left) {
-        newVelocity.x = -1;
-      } else if (playerInput.right) {
-        newVelocity.x = 1;
-      }
-    }
-    // update previousPosition of player
-    m_player->getComponent<CTransform>().prevPos = playerPosition;
+  //
+  // === JUMP LOGIC ===
+  //
+  if (input.up && m_playerOnGround && !m_isJumping) {
+    // Start jump
+    velocity.y = m_playerConfig.JUMP;
+    m_isJumping = true;
+    m_jumpTime = 0.0f;
+    m_playerOnGround = false;
+    // std::cout << "Jump Start! Velocity.y = " << velocity.y << "\n";
   }
-  velocity = newVelocity;
 
-  // update current player position
-  playerPosition.x += velocity.x * m_playerConfig.SPEED;
-  playerPosition.y += velocity.y * m_playerConfig.SPEED;
+  // Holding jump: allow extended jump height while going upward
+  if (input.up && m_isJumping) {
+    m_jumpTime += 1.0f / m_game->m_frameLimit; // assume 60 FPS
+    if (m_jumpTime < m_maxJumpTime) {
+      // Optional: slightly reduce gravity during hold
+      velocity.y += -gravity * 0.5f;
+    } else {
+      m_isJumping = false; // max hold time reached
+    }
+  }
+
+  // Jump key released early: stop extending
+  if (!input.up && m_isJumping) {
+    m_isJumping = false;
+
+    // Interrupt upward velocity if player was moving up
+    if (velocity.y < 0) {
+      velocity.y = 0;
+    }
+  }
+  //
+  // === APPLY GRAVITY ===
+  //
+  velocity.y += gravity;
+
+  if (velocity.y > m_playerConfig.MAX_SPEED) {
+    velocity.y = m_playerConfig.MAX_SPEED;
+  }
+
+  //
+  // === HORIZONTAL INPUT ===
+  //
+  if (input.left) {
+    velocity.x = -m_playerConfig.SPEED;
+  } else if (input.right) {
+    velocity.x = m_playerConfig.SPEED;
+  } else {
+    velocity.x = 0;
+  }
+
+  //
+  // === APPLY MOVEMENT ===
+  //
+  transform.pos += velocity;
 }
 
 void Scene_Play::sLifespan() {
@@ -232,22 +237,28 @@ void Scene_Play::sCollision() {
 
   // TODO: Implement Physics::GetOverlap() function, use it inside this
   // function
+
+  m_playerOnGround = false;
   Vec2 &playerPosition = m_player->getComponent<CTransform>().pos;
   for (auto &entityNode : m_entityManager.getEntities("Tile")) {
     Vec2 overlap = m_worldPhysics.GetOverlap(m_player, entityNode);
     if (overlap.x != 0 && overlap.y != 0) {
       Vec2 previousOverlap =
           m_worldPhysics.GetPreviousOverlap(m_player, entityNode);
+      auto &velocity = m_player->getComponent<CTransform>().velocity;
+
       if (std::abs(overlap.x) < std::abs(overlap.y)) {
-        // Resolve X axis
         playerPosition.x += overlap.x;
-      } else if (overlap.x < -5 || overlap.x > 5) {
-        // Resolve Y axis
-        playerPosition.y += overlap.y;
       } else {
-        // Stop Y velocity if hitting ground
+        playerPosition.y += overlap.y;
+
         if (overlap.y < 0) {
-          m_player->getComponent<CTransform>().velocity.y = 0;
+          // Landed on top of tile
+          m_playerOnGround = true;
+          velocity.y = 0;
+        } else if (overlap.y > 0 && velocity.y < 0) {
+          // Hit head on bottom of tile while jumping
+          velocity.y = 0;
         }
       }
     }
@@ -276,6 +287,7 @@ void Scene_Play::sDoAction(const Action &action) {
     } else if (action.name() == "QUIT") {
       onEnd();
     } else if (action.name() == "JUMP") {
+      m_jumpActive = true;
       m_player->getComponent<CInput>().up = true;
     } else if (action.name() == "LEFT") {
       m_player->getComponent<CInput>().left = true;
@@ -286,6 +298,7 @@ void Scene_Play::sDoAction(const Action &action) {
     }
   } else if (action.type() == "END") {
     if (action.name() == "JUMP") {
+      m_jumpActive = false;
       m_player->getComponent<CInput>().up = false;
     } else if (action.name() == "LEFT") {
       m_player->getComponent<CInput>().left = false;
