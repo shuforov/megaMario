@@ -141,7 +141,18 @@ void Scene_Play::spawnPlayer() {
 void Scene_Play::spawnBullet(std::shared_ptr<Entity> entity) {
   // TODO: this should spawn a bullet at the given entity, going in the
   // direction the entity is facing
-  std::cout << "Player shoot" << std::endl;
+  auto bulletNode = m_entityManager.addEntity("bullet");
+  auto entityPosition = entity->getComponent<CTransform>().pos;
+  bulletNode->addComponent<CAnimation>(
+      m_game->assets().getAnimation(m_playerConfig.WEAPON), true);
+  bulletNode->addComponent<CTransform>(entityPosition);
+  bulletNode->addComponent<CBoundingBox>(
+      m_game->assets().getAnimation(m_playerConfig.WEAPON).getSize());
+  if (m_playerLookDiraction == "left") {
+    bulletNode->getComponent<CTransform>().velocity.x = -1;
+  } else if (m_playerLookDiraction == "right") {
+    bulletNode->getComponent<CTransform>().velocity.x = 1;
+  }
 }
 
 void Scene_Play::update() {
@@ -243,6 +254,13 @@ void Scene_Play::sMovement() {
   // === APPLY MOVEMENT ===
   //
   transform.pos += velocity;
+
+  // BULLETS MOVEMENT UPDATE
+  for (auto &entityNode : m_entityManager.getEntities("bullet")) {
+    Vec2 &entityPosition = entityNode->getComponent<CTransform>().pos;
+    Vec2 &entityVelocity = entityNode->getComponent<CTransform>().velocity;
+    entityPosition.x += entityVelocity.x * 10; // 10 is speed of bullet
+  }
 }
 
 void Scene_Play::sLifespan() {
