@@ -34,6 +34,7 @@ void Scene_Play::init(const std::string &levelPath) {
   registerAction(sf::Keyboard::A, "LEFT");
   registerAction(sf::Keyboard::D, "RIGHT");
   registerAction(sf::Keyboard::S, "DOWN");
+  registerAction(sf::Keyboard::J, "SHOOT");
 
   m_gridText.setCharacterSize(12);
   m_gridText.setFont(m_game->assets().getFont("Arial"));
@@ -140,6 +141,7 @@ void Scene_Play::spawnPlayer() {
 void Scene_Play::spawnBullet(std::shared_ptr<Entity> entity) {
   // TODO: this should spawn a bullet at the given entity, going in the
   // direction the entity is facing
+  std::cout << "Player shoot" << std::endl;
 }
 
 void Scene_Play::update() {
@@ -321,6 +323,11 @@ void Scene_Play::sDoAction(const Action &action) {
       m_player->getComponent<CInput>().right = true;
     } else if (action.name() == "DOWN") {
       m_player->getComponent<CInput>().down = true;
+    } else if (action.name() == "SHOOT") {
+      if (m_player->getComponent<CInput>().canShoot) {
+        spawnBullet(m_player);
+      }
+      m_player->getComponent<CInput>().canShoot = false;
     }
   } else if (action.type() == "END") {
     if (action.name() == "JUMP") {
@@ -332,6 +339,8 @@ void Scene_Play::sDoAction(const Action &action) {
       m_player->getComponent<CInput>().right = false;
     } else if (action.name() == "DOWN") {
       m_player->getComponent<CInput>().down = false;
+    } else if (action.name() == "SHOOT") {
+      m_player->getComponent<CInput>().canShoot = true;
     }
   }
 }
