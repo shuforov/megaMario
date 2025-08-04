@@ -29,6 +29,7 @@ protected:
   bool m_isJumping = false;
   float m_jumpTime = 0.0f;
   float m_maxJumpTime = 0.25f; // seconds of held-jump boost
+  std::string m_playerLookDiraction = "right";
 
   void init(const std::string &levelPath);
 

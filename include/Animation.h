@@ -32,6 +32,8 @@ public:
   const Vec2 &getSize() const;
 
   sf::Sprite &getSprite();
+
+  void setFlipped(bool flipped);
 };
 
 #endif // ANIMATION_H

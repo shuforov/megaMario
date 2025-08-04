@@ -179,6 +179,8 @@ void Scene_Play::sMovement() {
   // Holding jump: allow extended jump height while going upward
   if (input.up && m_isJumping) {
     m_jumpTime += 1.0f / m_game->m_frameLimit; // assume 60 FPS
+    m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Air"),
+                                       true);
     if (m_jumpTime < m_maxJumpTime) {
       // Optional: slightly reduce gravity during hold
       velocity.y += -gravity * 0.5f;
@@ -210,10 +212,29 @@ void Scene_Play::sMovement() {
   //
   if (input.left) {
     velocity.x = -m_playerConfig.SPEED;
+    if (m_playerOnGround) {
+      m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Run"),
+                                         true);
+    }
+    m_player->getComponent<CAnimation>().animation.setFlipped(true);
+    m_playerLookDiraction = "left";
   } else if (input.right) {
     velocity.x = m_playerConfig.SPEED;
+    if (m_playerOnGround) {
+      m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Run"),
+                                         true);
+    }
+    m_player->getComponent<CAnimation>().animation.setFlipped(false);
+    m_playerLookDiraction = "right";
   } else {
     velocity.x = 0;
+    m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Stand"),
+                                       true);
+    if (m_playerLookDiraction == "left") {
+      m_player->getComponent<CAnimation>().animation.setFlipped(true);
+    } else {
+      m_player->getComponent<CAnimation>().animation.setFlipped(false);
+    }
   }
 
   //
@@ -256,6 +277,11 @@ void Scene_Play::sCollision() {
           // Landed on top of tile
           m_playerOnGround = true;
           velocity.y = 0;
+          if (m_player->getComponent<CAnimation>().animation.getName() ==
+              "Air") {
+            m_player->addComponent<CAnimation>(
+                m_game->assets().getAnimation("Stand"), true);
+          }
         } else if (overlap.y > 0 && velocity.y < 0) {
           // Hit head on bottom of tile while jumping
           velocity.y = 0;
