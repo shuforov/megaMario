@@ -312,7 +312,6 @@ void Scene_Play::sCollision() {
   // Block blayer to walk off the left side of the map BEGIN
   //
   if ((playerPosition.x - 32) < 0) {
-    std::cout << "position out of bound" << std::endl;
     playerPosition.x = m_player->getComponent<CTransform>().prevPos.x;
     m_player->getComponent<CTransform>().velocity.x = 0;
   }
@@ -320,9 +319,19 @@ void Scene_Play::sCollision() {
   // Block blayer to walk off the left side of the map END
   //
 
+  //
+  // Player has fallen down BEGIN
+  //
+  if ((playerPosition.y) > m_game->window().getSize().y) {
+    m_player->addComponent<CTransform>(
+        gridToMidPixel(m_playerConfig.X, m_playerConfig.Y, m_player));
+  }
+  //
+  // Player has fallen down END
+  //
+
   // TODO: Implement bullet/tile collisions
   //       Destroy the tile if it has a Brick animation
-  // TODO: Check to see if the player has fallen down a hole (y > height())
 }
 
 void Scene_Play::sDoAction(const Action &action) {
