@@ -136,7 +136,7 @@ void Scene_Play::spawnPlayer() {
 void Scene_Play::spawnBullet(std::shared_ptr<Entity> entity) {
   // This spawn a bullet at the given entity, going in the
   // direction the entity is facing
-  auto bulletNode = m_entityManager.addEntity("bullet");
+  auto bulletNode = m_entityManager.addEntity("Bullet");
   auto entityPosition = entity->getComponent<CTransform>().pos;
   bulletNode->addComponent<CAnimation>(
       m_game->assets().getAnimation(m_playerConfig.WEAPON), true);
@@ -250,7 +250,7 @@ void Scene_Play::sMovement() {
   transform.pos += velocity;
 
   // BULLETS MOVEMENT UPDATE
-  for (auto &entityNode : m_entityManager.getEntities("bullet")) {
+  for (auto &entityNode : m_entityManager.getEntities("Bullet")) {
     Vec2 &entityPosition = entityNode->getComponent<CTransform>().pos;
     Vec2 &entityVelocity = entityNode->getComponent<CTransform>().velocity;
     entityPosition.x += entityVelocity.x * 10; // 10 is speed of bullet
@@ -328,6 +328,21 @@ void Scene_Play::sCollision() {
   }
   //
   // Player has fallen down END
+  //
+
+  //
+  // Bullet collision BEGIN
+  //
+  for (auto bulletNode : m_entityManager.getEntities("Bullet")) {
+    for (auto entityNode : m_entityManager.getEntities("Tile")) {
+      Vec2 overlap = m_worldPhysics.GetOverlap(bulletNode, entityNode);
+      if (overlap.x != 0 && overlap.y != 0) {
+        bulletNode->destroy();
+      }
+    }
+  }
+  //
+  // Bullet collision END
   //
 
   // TODO: Implement bullet/tile collisions
