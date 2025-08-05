@@ -65,10 +65,6 @@ void Scene_Play::loadLevel(const std::string &fileName) {
   // reset the entity manager every time we load a level
   m_entityManager = EntityManager();
 
-  // TODO: read in the level file and add the appropriate entities
-  //       use the PlayerConfig struct m_playerConfig to store player properties
-  //       this struct is defined at the top of Scene_Play.h
-
   // Reading data in level file here
   std::ifstream fileInput(fileName);
   if (!fileInput.is_open()) {
@@ -135,11 +131,10 @@ void Scene_Play::spawnPlayer() {
   m_player->addComponent<CBoundingBox>(
       Vec2(m_playerConfig.CX, m_playerConfig.CY));
   m_player->addComponent<CGravity>(m_playerConfig.GRAVITY);
-  // TODO: be sure to add the remaining components to the player
 }
 
 void Scene_Play::spawnBullet(std::shared_ptr<Entity> entity) {
-  // TODO: this should spawn a bullet at the given entity, going in the
+  // This spawn a bullet at the given entity, going in the
   // direction the entity is facing
   auto bulletNode = m_entityManager.addEntity("bullet");
   auto entityPosition = entity->getComponent<CTransform>().pos;
@@ -165,7 +160,6 @@ void Scene_Play::update() {
   sCollision();
   sAnimation();
   sRender();
-  // m_currentFrame++;
 }
 
 void Scene_Play::sMovement() {
@@ -276,9 +270,9 @@ void Scene_Play::sCollision() {
   //           GREATER than it Also, something ABOVE something else will
   //           hava a y value LESS than it
 
-  // TODO: Implement Physics::GetOverlap() function, use it inside this
-  // function
-
+  //
+  // Collisions of tile with player BEGIN
+  //
   m_playerOnGround = false;
   Vec2 &playerPosition = m_player->getComponent<CTransform>().pos;
   for (auto &entityNode : m_entityManager.getEntities("Tile")) {
@@ -310,14 +304,25 @@ void Scene_Play::sCollision() {
     }
   }
 
+  //
+  // Collisions of tile with player END
+  //
+
+  //
+  // Block blayer to walk off the left side of the map BEGIN
+  //
+  if ((playerPosition.x - 32) < 0) {
+    std::cout << "position out of bound" << std::endl;
+    playerPosition.x = m_player->getComponent<CTransform>().prevPos.x;
+    m_player->getComponent<CTransform>().velocity.x = 0;
+  }
+  //
+  // Block blayer to walk off the left side of the map END
+  //
+
   // TODO: Implement bullet/tile collisions
   //       Destroy the tile if it has a Brick animation
-  // TODO: Implement player/tile collisions and resolutions
-  //       Update the CState component of the player to store whether
-  //       it is currently on the ground or in the air. This will be
-  //       used by the Animation system
   // TODO: Check to see if the player has fallen down a hole (y > height())
-  // TODO: Don't let the player walk off the left side of the map
 }
 
 void Scene_Play::sDoAction(const Action &action) {
