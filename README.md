@@ -16,6 +16,21 @@ make run
 
 Alternatively, you can run the compiled binary directly from the `bin/` folder if available.
 
+---
+![output](https://github.com/user-attachments/assets/098281ed-c01b-4d37-ad37-2f1f71676a8f)
+
+
+# Game Description
+
+## Controls
+
+- `W`, `A`, `S`, `D` — Move the player (W is jump) 
+- `J` - Shoot
+- `ESC` - Go back to menu
+- `C` - Show/Hide collision box
+- `T` - Show/Hide textures
+- `G` - Show/Hide grid
+
 ----
 The init commit for start doing assignmnet 3 is -> 1552cdddaefb
 ----
