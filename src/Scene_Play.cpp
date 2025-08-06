@@ -281,7 +281,13 @@ void Scene_Play::sCollision() {
       Vec2 previousOverlap =
           m_worldPhysics.GetPreviousOverlap(m_player, entityNode);
       auto &velocity = m_player->getComponent<CTransform>().velocity;
-
+      auto entityName =
+          entityNode->getComponent<CAnimation>().animation.getName();
+      if (entityName == "Flag" || entityName == "Pole" ||
+          entityName == "PoleTop") {
+        m_player->addComponent<CTransform>(
+            gridToMidPixel(m_playerConfig.X, m_playerConfig.Y, m_player));
+      }
       if (std::abs(overlap.x) < std::abs(overlap.y)) {
         playerPosition.x += overlap.x;
       } else {
@@ -299,6 +305,12 @@ void Scene_Play::sCollision() {
         } else if (overlap.y > 0 && velocity.y < 0) {
           // Hit head on bottom of tile while jumping
           velocity.y = 0;
+          if (entityName == "Brick") {
+            entityNode->destroy();
+          } else if (entityName == "Question") {
+            entityNode->addComponent<CAnimation>(
+                m_game->assets().getAnimation("Question2"), true);
+          }
         }
       }
     }
@@ -338,6 +350,11 @@ void Scene_Play::sCollision() {
       Vec2 overlap = m_worldPhysics.GetOverlap(bulletNode, entityNode);
       if (overlap.x != 0 && overlap.y != 0) {
         bulletNode->destroy();
+        auto entityName =
+            entityNode->getComponent<CAnimation>().animation.getName();
+        if (entityName == "Brick") {
+          entityNode->destroy();
+        }
       }
     }
   }
