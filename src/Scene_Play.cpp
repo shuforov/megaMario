@@ -141,6 +141,8 @@ void Scene_Play::spawnBullet(std::shared_ptr<Entity> entity) {
   bulletNode->addComponent<CAnimation>(
       m_game->assets().getAnimation(m_playerConfig.WEAPON), true);
   bulletNode->addComponent<CTransform>(entityPosition);
+  bulletNode->addComponent<CLifespan>(
+      100, 0); // 100 is lifespan time of bullet, and 0 is start frame
   bulletNode->addComponent<CBoundingBox>(
       m_game->assets().getAnimation(m_playerConfig.WEAPON).getSize());
   if (m_playerLookDiraction == "left") {
@@ -167,7 +169,7 @@ void Scene_Play::sMovement() {
   auto &velocity = transform.velocity;
   auto gravity = m_player->getComponent<CGravity>().gravity;
   auto &input = m_player->getComponent<CInput>();
-
+  auto &anim = m_player->getComponent<CAnimation>().animation;
   // Track previous position before any changes
   transform.prevPos = transform.pos;
 
@@ -220,27 +222,46 @@ void Scene_Play::sMovement() {
   if (input.left) {
     velocity.x = -m_playerConfig.SPEED;
     if (m_playerOnGround) {
-      m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Run"),
+      if (anim.getName() != "Run") {
+        m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Run"),
+                                           true);
+      }
+    } else {
+      m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Air"),
                                          true);
     }
-    m_player->getComponent<CAnimation>().animation.setFlipped(true);
+    anim.setFlipped(true);
     m_playerLookDiraction = "left";
+    m_animationIsFlipped = true;
   } else if (input.right) {
     velocity.x = m_playerConfig.SPEED;
     if (m_playerOnGround) {
-      m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Run"),
+      if (anim.getName() != "Run") {
+        m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Run"),
+                                           true);
+      }
+    } else {
+      m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Air"),
                                          true);
     }
-    m_player->getComponent<CAnimation>().animation.setFlipped(false);
+    anim.setFlipped(false);
     m_playerLookDiraction = "right";
+    m_animationIsFlipped = false;
   } else {
     velocity.x = 0;
-    m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Stand"),
-                                       true);
-    if (m_playerLookDiraction == "left") {
-      m_player->getComponent<CAnimation>().animation.setFlipped(true);
+    if (m_playerOnGround) {
+      m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Stand"),
+                                         true);
     } else {
-      m_player->getComponent<CAnimation>().animation.setFlipped(false);
+      m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Air"),
+                                         true);
+    }
+    if (m_playerLookDiraction == "left") {
+      anim.setFlipped(true);
+      m_animationIsFlipped = true;
+    } else {
+      anim.setFlipped(false);
+      m_animationIsFlipped = false;
     }
   }
 
@@ -258,8 +279,14 @@ void Scene_Play::sMovement() {
 }
 
 void Scene_Play::sLifespan() {
-  // TODO: Check lifespan of entities the have them, and destroy them if the
-  // go over
+  for (auto &entityNode : m_entityManager.getEntities("Bullet")) {
+    auto &lifeData = entityNode->getComponent<CLifespan>();
+    if (lifeData.lifespan == lifeData.frameCreated) {
+      entityNode->destroy();
+    } else {
+      lifeData.frameCreated++;
+    }
+  }
 }
 
 void Scene_Play::sCollision() {
@@ -306,11 +333,26 @@ void Scene_Play::sCollision() {
           // Hit head on bottom of tile while jumping
           velocity.y = 0;
           if (entityName == "Brick") {
+            Vec2 positionEntityNode =
+                entityNode->getComponent<CTransform>().pos;
             entityNode->destroy();
+            auto explodeNode = m_entityManager.addEntity("Explosion");
+            explodeNode->addComponent<CAnimation>(
+                m_game->assets().getAnimation("Explosion"), true);
+            explodeNode->addComponent<CTransform>(positionEntityNode);
           } else if (entityName == "Question") {
             entityNode->addComponent<CAnimation>(
                 m_game->assets().getAnimation("Question2"), true);
+            Vec2 entityPosition = entityNode->getComponent<CTransform>().pos;
+            auto coinNode = m_entityManager.addEntity("Coin");
+            coinNode->addComponent<CAnimation>(
+                m_game->assets().getAnimation("Coin"), true);
+            coinNode->addComponent<CTransform>(entityPosition);
+            coinNode->getComponent<CTransform>().pos.y -=
+                entityNode->getComponent<CAnimation>().animation.getSize().y;
           }
+        } else {
+          m_playerOnGround = false;
         }
       }
     }
@@ -345,15 +387,20 @@ void Scene_Play::sCollision() {
   //
   // Bullet collision BEGIN
   //
-  for (auto bulletNode : m_entityManager.getEntities("Bullet")) {
-    for (auto entityNode : m_entityManager.getEntities("Tile")) {
+  for (auto &bulletNode : m_entityManager.getEntities("Bullet")) {
+    for (auto &entityNode : m_entityManager.getEntities("Tile")) {
       Vec2 overlap = m_worldPhysics.GetOverlap(bulletNode, entityNode);
       if (overlap.x != 0 && overlap.y != 0) {
         bulletNode->destroy();
         auto entityName =
             entityNode->getComponent<CAnimation>().animation.getName();
         if (entityName == "Brick") {
+          Vec2 positionEntityNode = entityNode->getComponent<CTransform>().pos;
           entityNode->destroy();
+          auto explodeNode = m_entityManager.addEntity("Explosion");
+          explodeNode->addComponent<CAnimation>(
+              m_game->assets().getAnimation("Explosion"), true);
+          explodeNode->addComponent<CTransform>(positionEntityNode);
         }
       }
     }
@@ -361,9 +408,6 @@ void Scene_Play::sCollision() {
   //
   // Bullet collision END
   //
-
-  // TODO: Implement bullet/tile collisions
-  //       Destroy the tile if it has a Brick animation
 }
 
 void Scene_Play::sDoAction(const Action &action) {
@@ -410,7 +454,24 @@ void Scene_Play::sDoAction(const Action &action) {
 }
 
 void Scene_Play::sAnimation() {
-  // TODO: Complete the Animation class code first
+  m_player->getComponent<CAnimation>().animation.update(m_animationIsFlipped);
+  for (auto &entityNode : m_entityManager.getEntities("Tile")) {
+    entityNode->getComponent<CAnimation>().animation.update(false);
+  }
+  for (auto &entityNode : m_entityManager.getEntities("Explosion")) {
+    auto &animation = entityNode->getComponent<CAnimation>().animation;
+    animation.update(false);
+    if (animation.hasEnded()) {
+      entityNode->destroy();
+    }
+  }
+  for (auto &entityNode : m_entityManager.getEntities("Coin")) {
+    auto &animation = entityNode->getComponent<CAnimation>().animation;
+    animation.update(false);
+    if (animation.hasEnded()) {
+      entityNode->destroy();
+    }
+  }
 }
 
 void Scene_Play::onEnd() {

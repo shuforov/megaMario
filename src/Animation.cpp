@@ -1,5 +1,7 @@
 #include "../include/Animation.h"
+#include <SFML/Graphics/Rect.hpp>
 #include <cmath>
+#include <cstddef>
 #include <utility>
 
 Animation::Animation() = default;
@@ -19,19 +21,26 @@ Animation::Animation(std::string name, const sf::Texture &t, size_t frameCount,
 
 // updates the animation to show the next frame, depending on its speed
 // animation loops when it reaches the end
-void Animation::update() {
+void Animation::update(bool flipped) {
   // add the speed variable to the current frame
-  m_currentFrame++;
+  if (m_speed == 0 || m_frameCount == 0) {
+    return;
+  }
 
-  // TODO: 1) calculate the correct frame of animation to play based on
-  // currentFrame and speed
-  //       2) set the texture rectangle properly (see constructor for sample)
+  if (hasEnded()) {
+    m_currentFrame = 0;
+  }
+  m_currentFrame++;
+  int animationFrame = (m_currentFrame / m_speed) % m_frameCount;
+  sf::IntRect rectangle(animationFrame * m_size.x, 0, m_size.x, m_size.y);
+  m_sprite.setTextureRect(rectangle);
+  setFlipped(flipped);
 }
 
 bool Animation::hasEnded() const {
-  // TODO: detect when animation has ended (last frame waw played) and return
-  // true
-  return false;
+  // detect when animation has ended (last frame waw played) and return
+  //  true
+  return (m_currentFrame / m_speed) >= m_frameCount;
 }
 
 const Vec2 &Animation::getSize() const { return m_size; }
@@ -50,6 +59,5 @@ void Animation::setFlipped(bool flipped) {
     rect.left = rect.left + rect.width; // since width is negative
     rect.width = -rect.width;
   }
-
   m_sprite.setTextureRect(rect);
 }
